@@ -99,3 +99,21 @@ def save_model(model: torch.nn.Module,
              f=model_save_path)
 
 
+def create_writer(experiment_name: str,
+                  model_name: str,
+                  extra: str = None):
+  """Creates a torch.utils.tensorboard.writer.SummaryWriter() instance tracking to a specific directory."""
+  from datetime import datetime
+  import os
+
+  # Get timestamp of current date in reverse order
+  timestamp = datetime.now().strftime("%Y-%m-%d") 
+
+  if extra:
+    # Create log directory path
+    log_dir = os.path.join("runs", timestamp, experiment_name, model_name, extra)
+  else:
+    log_dir = os.path.join("runs", timestamp, experiment_name, model_name)
+  print(f"[INFO] Created SummaryWriter saving to {log_dir}")
+  return SummaryWriter(log_dir=log_dir)
+
