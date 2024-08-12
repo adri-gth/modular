@@ -7,6 +7,7 @@ from torchvision import transforms
 from typing import Tuple, Optional, List, Union,Dict
 import pandas as pd
 import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
 
 
 """Contiene codigos de ayuda para el procesamiento de la informacion y el entrenamiento
