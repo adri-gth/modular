@@ -1,3 +1,4 @@
+from torch.utils.tensorboard import SummaryWriter
 import os
 import zipfile
 from pathlib import Path
@@ -7,8 +8,8 @@ from torchvision import transforms
 from typing import Tuple, Optional, List, Union,Dict
 import pandas as pd
 import matplotlib.pyplot as plt
-from torch.utils.tensorboard import SummaryWriter
-
+import torchvision
+from torch import nn
 
 """Contiene codigos de ayuda para el procesamiento de la informacion y el entrenamiento
 del los modelo
@@ -16,6 +17,7 @@ del los modelo
 
 def create_transforms(resize: Optional[Tuple[int,int]]= None,
                       to_tensor:bool = True,
+                      normalize:bool = True,
                       randomRotation: Optional[Tuple[int,int]]= None, #cuanto se puede rotar la imagen, en grados
                       randomAdjustSharpness: Optional[int] = None, #cuánto se debe ajustar la nitidez. Puede ser cualquier número no negativo. 0 da una imagen borrosa, 1 da la imagen original y 2 aumenta la nitidez en un factor de 2.
                       randomAutocontrast: bool = False,
@@ -48,6 +50,13 @@ def create_transforms(resize: Optional[Tuple[int,int]]= None,
   if resize:
     transform_list.append(transforms.Resize(resize))
 
+  if to_tensor:
+    transform_list.append(transforms.ToTensor())
+
+  if normalize:
+    transform_list.append(transforms.Normalize(mean=[0.485,0.456,0.406],
+                                               std = [0.229,0.224,0.225]))
+
   if randomRotation:
     transform_list.append(transforms.RandomRotation(degrees = randomRotation))
 
@@ -63,8 +72,7 @@ def create_transforms(resize: Optional[Tuple[int,int]]= None,
   if randomVerticalFlip:
     transform_list.append(transforms.RandomVerticalFlip(p=0.5))
 
-  if to_tensor:
-    transform_list.append(transforms.ToTensor())
+
 
   return transforms.Compose(transform_list)
 
@@ -108,7 +116,7 @@ def create_writer(experiment_name: str,
   import os
 
   # Get timestamp of current date in reverse order
-  timestamp = datetime.now().strftime("%Y-%m-%d") 
+  timestamp = datetime.now().strftime("%Y-%m-%d")
 
   if extra:
     # Create log directory path
@@ -117,4 +125,66 @@ def create_writer(experiment_name: str,
     log_dir = os.path.join("runs", timestamp, experiment_name, model_name)
   print(f"[INFO] Created SummaryWriter saving to {log_dir}")
   return SummaryWriter(log_dir=log_dir)
+
+
+
+
+def create_effnetb0(OUT_FEATURES:int)-> nn.Module:
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  # Get the weights and setup a model
+  weights = torchvision.models.EfficientNet_B0_Weights.DEFAULT
+  model = torchvision.models.efficientnet_b0(weights=weights).to(device)
+
+  # Freeze the base model layers
+  # Congelar los primeros 2 bloques (bloques 0 y 1 en model.features)
+  for name, module in model.features.named_children():
+      if name in ['0', '1','2','3']:  # Congela los bloques 0,1,2,3
+          for param in module.parameters():
+              param.requires_grad = False
+      else:  # Descongela los bloques restantes
+          for param in module.parameters():
+              param.requires_grad = True
+
+  # Change the classifier head
+
+  model.classifier = nn.Sequential(
+      nn.Dropout(p=0.2, inplace=True),
+      nn.Linear(in_features=1280, out_features=OUT_FEATURES)
+  ).to(device)
+
+  # Give the model a name
+  model.name = "effnetb0"
+  print(f"[INFO] Created new {model.name} model...")
+  return model
+
+# Create an EffNetB2 feature extractor
+def create_mobilnetv3s(OUT_FEATURES:int)-> nn.Module:
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  # Get the weights and setup a model
+  weights = torchvision.models.MobileNet_V3_Small_Weights.IMAGENET1K_V1
+  model = torchvision.models.mobilenet_v3_small(weights=weights).to(device)
+
+
+  # Freeze the base model layers
+  # Congelar los primeros 2 bloques (bloques 0 y 1 en model.features)
+  for name, module in model.features.named_children():
+      if name in ['0', '1','2','3']:  # Congela los bloques 0,1,2,3
+          for param in module.parameters():
+              param.requires_grad = False
+      else:  # Descongela los bloques restantes
+          for param in module.parameters():
+              param.requires_grad = True
+
+  # Change the classifier head
+  model.classifier = nn.Sequential(
+      nn.Linear(in_features = 576, out_features = 1024, bias = True),
+      nn.Hardswish(),
+      nn.Dropout(p=0.2, inplace=True),
+      nn.Linear(in_features=1024, out_features=OUT_FEATURES,bias = True)
+  ).to(device)
+
+  # Give the model a name
+  model.name = "mobilnetv3s"
+  print(f"[INFO] Created new {model.name} model...")
+  return model
 

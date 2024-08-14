@@ -207,7 +207,7 @@ def train(model: torch.nn.Module,
         writer.close()
       else:
         pass
-    ### End new ### 
+    ### End new ###
 
   # Return the filled results at the end of the epochs
   return results
