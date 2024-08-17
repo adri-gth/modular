@@ -136,9 +136,9 @@ def create_effnetb0(OUT_FEATURES:int)-> nn.Module:
   model = torchvision.models.efficientnet_b0(weights=weights).to(device)
 
   # Freeze the base model layers
-  # Congelar los primeros 2 bloques (bloques 0 y 1 en model.features)
+  # Congelar los primeros 4 bloques 
   for name, module in model.features.named_children():
-      if name in ['0', '1','2','3']:  # Congela los bloques 0,1,2,3
+      if name in ['0', '1','2','3','4']:  # Congela los bloques 0,1,2,3
           for param in module.parameters():
               param.requires_grad = False
       else:  # Descongela los bloques restantes
@@ -166,9 +166,9 @@ def create_mobilnetv3s(OUT_FEATURES:int)-> nn.Module:
 
 
   # Freeze the base model layers
-  # Congelar los primeros 2 bloques (bloques 0 y 1 en model.features)
+  # Congelar los primeros 8 bloques 
   for name, module in model.features.named_children():
-      if name in ['0', '1','2','3']:  # Congela los bloques 0,1,2,3
+      if name in ['0', '1','2','3','4','5','6','7']:  # Congela los bloques 0,1,2,3
           for param in module.parameters():
               param.requires_grad = False
       else:  # Descongela los bloques restantes
